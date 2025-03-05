@@ -251,6 +251,21 @@ impl<T, E> TryStreamEmitter<T, E> {
     pub fn emit_err(&self, err: E) -> CollectFuture {
         self.internal_emit(Err(err))
     }
+
+    /// Either calls [`emit`] or [`emit_err`] depending if the result is [`Ok`] or [`Err`] repectively. 
+    /// Then wait until stream consumer calls [`futures_util::StreamExt::next`] again.
+    ///
+    /// # Panics
+    /// Will panic if:
+    /// * `emit`/`emit_err` is called twice without awaiting result of the first call
+    /// * `emit_err` is called not in context of polling the stream
+    #[must_use = "Ensure that emit_result() is awaited"]
+    pub fn emit_result(&self, res: Result<T, E>) -> CollectFuture {
+        match track {
+            Ok(val) => self.internal_emit(Ok(val)).await,
+            Err(val) => self.internal_emit(Err(val)).await,
+        }
+    }
 }
 
 /// Future returned from [`StreamEmitter::emit`].
